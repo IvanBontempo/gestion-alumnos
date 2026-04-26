@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alumnos - Gestión de Alumnos</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="navbar">
+    <h1>🎓 Gestión de Alumnos</h1>
+    <nav>
+        <a href="/frontend/dashboard.html">Dashboard</a>
+        <a href="/frontend/alumnos.html">Alumnos</a>
+        <a href="/frontend/grupos.html">Grupos</a>
+        <a href="/frontend/asistencia.html">Asistencia</a>
+        <a href="/frontend/pagos.html">Pagos</a>
+    </nav>
+    <div class="usuario-info">
+        <span id="nombreUsuario"></span>
+        <button class="btn btn-danger btn-sm" onclick="cerrarSesion()">Cerrar sesión</button>
+    </div>
+</div>
+
+<div class="container">
+    <div class="card">
+        <div class="flex justify-between align-center">
+            <h2>Alumnos</h2>
+            <button class="btn btn-primary" onclick="abrirModalNuevo()">+ Nuevo Alumno</button>
+        </div>
+
+        <div class="form-group mt-10">
+            <input type="text" id="buscador" placeholder="Buscar por nombre o apellido..."
+                   oninput="filtrarAlumnos()">
+        </div>
+
+        <div class="table-container mt-10">
+            <table>
+                <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Apellido</th>
+                    <th>DNI</th>
+                    <th>Email</th>
+                    <th>Teléfono</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+                </thead>
+                <tbody id="tablaAlumnos"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nuevo/Editar Alumno -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+        <h3 id="modalTitulo">Nuevo Alumno</h3>
+        <input type="hidden" id="alumnoId">
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Nombre *</label>
+                <input type="text" id="nombre" placeholder="Nombre">
+            </div>
+            <div class="form-group">
+                <label>Apellido *</label>
+                <input type="text" id="apellido" placeholder="Apellido">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>DNI</label>
+                <input type="text" id="dni" placeholder="12345678">
+            </div>
+            <div class="form-group">
+                <label>Teléfono</label>
+                <input type="text" id="telefono" placeholder="2346123456">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="email" placeholder="alumno@email.com">
+        </div>
+        <div class="form-group">
+            <label>Fecha de Nacimiento</label>
+            <input type="date" id="fechaNacimiento">
+        </div>
+
+        <div id="alertaModal" class="alert alert-danger" style="display:none;"></div>
+
+        <div class="modal-footer">
+            <button class="btn btn-warning" onclick="cerrarModal()">Cancelar</button>
+            <button class="btn btn-primary" onclick="guardarAlumno()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+    verificarAuth();
+    document.getElementById('nombreUsuario').textContent = localStorage.getItem('nombre');
+
+    let alumnos = [];
+
+    async function cargarAlumnos() {
+        alumnos = await apiGet('/alumnos');
+        renderizarTabla(alumnos);
+    }
+
+    function renderizarTabla(lista) {
+        const tbody = document.getElementById('tablaAlumnos');
+        if (lista.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center" style="color:#888;">No hay alumnos registrados</td></tr>';
+            return;
+        }
+        tbody.innerHTML = lista.map(a => `
+                <tr>
+                    <td>${a.nombre}</td>
+                    <td>${a.apellido}</td>
+                    <td>${a.dni || '-'}</td>
+                    <td>${a.email || '-'}</td>
+                    <td>${a.telefono || '-'}</td>
+                    <td>
+                        <span class="badge ${a.activo ? 'badge-success' : 'badge-danger'}">
+                            ${a.activo ? 'Activo' : 'Inactivo'}
+                        </span>
+                    </td>
+                    <td class="flex gap-10">
+                        <button class="btn btn-warning btn-sm" onclick="abrirModalEditar(${a.id})">Editar</button>
+                        ${a.activo
+            ? `<button class="btn btn-danger btn-sm" onclick="darDeBaja(${a.id})">Dar de baja</button>`
+            : `<button class="btn btn-success btn-sm" onclick="darDeAlta(${a.id})">Dar de alta</button>`}
+                    </td>
+                </tr>
+            `).join('');
+    }
+
+    function filtrarAlumnos() {
+        const busqueda = document.getElementById('buscador').value.toLowerCase();
+        const filtrados = alumnos.filter(a =>
+            a.nombre.toLowerCase().includes(busqueda) ||
+            a.apellido.toLowerCase().includes(busqueda)
+        );
+        renderizarTabla(filtrados);
+    }
+
+    function abrirModalNuevo() {
+        document.getElementById('modalTitulo').textContent = 'Nuevo Alumno';
+        document.getElementById('alumnoId').value = '';
+        document.getElementById('nombre').value = '';
+        document.getElementById('apellido').value = '';
+        document.getElementById('dni').value = '';
+        document.getElementById('telefono').value = '';
+        document.getElementById('email').value = '';
+        document.getElementById('fechaNacimiento').value = '';
+        document.getElementById('alertaModal').style.display = 'none';
+        document.getElementById('modalOverlay').classList.add('active');
+    }
+
+    function abrirModalEditar(id) {
+        const alumno = alumnos.find(a => a.id === id);
+        document.getElementById('modalTitulo').textContent = 'Editar Alumno';
+        document.getElementById('alumnoId').value = alumno.id;
+        document.getElementById('nombre').value = alumno.nombre;
+        document.getElementById('apellido').value = alumno.apellido;
+        document.getElementById('dni').value = alumno.dni || '';
+        document.getElementById('telefono').value = alumno.telefono || '';
+        document.getElementById('email').value = alumno.email || '';
+        document.getElementById('fechaNacimiento').value = alumno.fechaNacimiento || '';
+        document.getElementById('alertaModal').style.display = 'none';
+        document.getElementById('modalOverlay').classList.add('active');
+    }
+
+    function cerrarModal() {
+        document.getElementById('modalOverlay').classList.remove('active');
+    }
+
+    async function guardarAlumno() {
+        const id = document.getElementById('alumnoId').value;
+        const alerta = document.getElementById('alertaModal');
+
+        const body = {
+            nombre: document.getElementById('nombre').value,
+            apellido: document.getElementById('apellido').value,
+            dni: document.getElementById('dni').value,
+            telefono: document.getElementById('telefono').value,
+            email: document.getElementById('email').value,
+            fechaNacimiento: document.getElementById('fechaNacimiento').value || null
+        };
+
+        if (!body.nombre || !body.apellido) {
+            alerta.textContent = 'Nombre y apellido son obligatorios.';
+            alerta.style.display = 'block';
+            return;
+        }
+
+        const resultado = id
+            ? await apiPut(`/alumnos/${id}`, body)
+            : await apiPost('/alumnos', body);
+
+        if (resultado && resultado.id) {
+            cerrarModal();
+            cargarAlumnos();
+        } else {
+            alerta.textContent = resultado?.mensaje || 'Error al guardar el alumno.';
+            alerta.style.display = 'block';
+        }
+    }
+
+    async function darDeBaja(id) {
+        if (!confirm('¿Estás seguro de dar de baja a este alumno?')) return;
+        await apiPatch(`/alumnos/${id}/baja`);
+        cargarAlumnos();
+    }
+
+    async function darDeAlta(id) {
+        if (!confirm('¿Estás seguro de dar de alta a este alumno?')) return;
+        await apiPatch(`/alumnos/${id}/alta`);
+        cargarAlumnos();
+    }
+
+    cargarAlumnos();
+</script>
+</body>
+</html>

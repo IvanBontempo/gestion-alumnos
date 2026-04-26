@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistencia - Gestión de Alumnos</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="navbar">
+    <h1>🎓 Gestión de Alumnos</h1>
+    <nav>
+        <a href="/frontend/dashboard.html">Dashboard</a>
+        <a href="/frontend/alumnos.html">Alumnos</a>
+        <a href="/frontend/grupos.html">Grupos</a>
+        <a href="/frontend/asistencia.html">Asistencia</a>
+        <a href="/frontend/pagos.html">Pagos</a>
+    </nav>
+    <div class="usuario-info">
+        <span id="nombreUsuario"></span>
+        <button class="btn btn-danger btn-sm" onclick="cerrarSesion()">Cerrar sesión</button>
+    </div>
+</div>
+
+<div class="container">
+    <div class="card">
+        <h2>Tomar Asistencia</h2>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Grupo *</label>
+                <select id="selectGrupo" onchange="cargarAlumnosGrupo()">
+                    <option value="">Seleccionar grupo...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Fecha *</label>
+                <input type="date" id="fecha" onchange="cargarAlumnosGrupo()">
+            </div>
+        </div>
+    </div>
+
+    <div class="card" id="cardAsistencia" style="display:none;">
+        <div class="flex justify-between align-center">
+            <h2 id="tituloAsistencia"></h2>
+            <div class="flex gap-10">
+                <button class="btn btn-success btn-sm" onclick="marcarTodos(true)">Marcar todos presentes</button>
+                <button class="btn btn-danger btn-sm" onclick="marcarTodos(false)">Marcar todos ausentes</button>
+            </div>
+        </div>
+
+        <div class="table-container mt-10">
+            <table>
+                <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Apellido</th>
+                    <th>Presente</th>
+                </tr>
+                </thead>
+                <tbody id="tablaAsistencia"></tbody>
+            </table>
+        </div>
+
+        <div class="flex justify-between align-center mt-20">
+            <span id="resumenAsistencia" style="color:#888; font-size:0.9rem;"></span>
+            <button class="btn btn-primary" onclick="guardarAsistencia()">Guardar Asistencia</button>
+        </div>
+
+        <div id="alertaAsistencia" class="alert alert-success mt-10" style="display:none;">
+            ✅ Asistencia guardada correctamente.
+        </div>
+    </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+    verificarAuth();
+    document.getElementById('nombreUsuario').textContent = localStorage.getItem('nombre');
+
+    // Setear fecha de hoy por defecto
+    document.getElementById('fecha').valueAsDate = new Date();
+
+    let alumnosGrupo = [];
+
+    async function cargarGrupos() {
+        const grupos = await apiGet('/grupos');
+        const select = document.getElementById('selectGrupo');
+        select.innerHTML = '<option value="">Seleccionar grupo...</option>';
+        grupos.forEach(g => {
+            select.innerHTML += `<option value="${g.id}">${g.nombre}</option>`;
+        });
+    }
+
+    async function cargarAlumnosGrupo() {
+        const grupoId = document.getElementById('selectGrupo').value;
+        const fecha = document.getElementById('fecha').value;
+
+        if (!grupoId || !fecha) return;
+
+        const activos = await apiGet(`/inscripciones/grupo/${grupoId}/activos`);
+        const asistenciasDelDia = await apiGet(`/asistencias/grupo/${grupoId}?fecha=${fecha}`);
+
+        alumnosGrupo = activos.map(i => {
+            const asistencia = asistenciasDelDia.find(
+                a => a.alumnoNombre === i.alumnoNombre &&
+                    a.alumnoApellido === i.alumnoApellido
+            );
+            return {
+                alumnoId: i.alumnoId || null,
+                nombre: i.alumnoNombre,
+                apellido: i.alumnoApellido,
+                inscripcionId: i.id,
+                presente: asistencia ? asistencia.presente : true
+            };
+        });
+
+        const grupo = document.getElementById('selectGrupo');
+        const nombreGrupo = grupo.options[grupo.selectedIndex].text;
+        document.getElementById('tituloAsistencia').textContent =
+            `${nombreGrupo} — ${fecha}`;
+
+        renderizarTablaAsistencia();
+        document.getElementById('cardAsistencia').style.display = 'block';
+        document.getElementById('alertaAsistencia').style.display = 'none';
+    }
+
+    function renderizarTablaAsistencia() {
+        const tbody = document.getElementById('tablaAsistencia');
+
+        if (alumnosGrupo.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center" style="color:#888;">No hay alumnos activos en este grupo</td></tr>';
+            actualizarResumen();
+            return;
+        }
+
+        tbody.innerHTML = alumnosGrupo.map((a, index) => `
+                <tr>
+                    <td>${a.nombre}</td>
+                    <td>${a.apellido}</td>
+                    <td>
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                            <input type="checkbox"
+                                   ${a.presente ? 'checked' : ''}
+                                   onchange="togglePresente(${index})"
+                                   style="width:18px; height:18px; cursor:pointer;">
+                            <span class="badge ${a.presente ? 'badge-success' : 'badge-danger'}">
+                                ${a.presente ? 'Presente' : 'Ausente'}
+                            </span>
+                        </label>
+                    </td>
+                </tr>
+            `).join('');
+
+        actualizarResumen();
+    }
+
+    function togglePresente(index) {
+        alumnosGrupo[index].presente = !alumnosGrupo[index].presente;
+        renderizarTablaAsistencia();
+    }
+
+    function marcarTodos(presente) {
+        alumnosGrupo.forEach(a => a.presente = presente);
+        renderizarTablaAsistencia();
+    }
+
+    function actualizarResumen() {
+        const presentes = alumnosGrupo.filter(a => a.presente).length;
+        const total = alumnosGrupo.length;
+        document.getElementById('resumenAsistencia').textContent =
+            `Presentes: ${presentes} / ${total}`;
+    }
+
+    async function guardarAsistencia() {
+        const grupoId = document.getElementById('selectGrupo').value;
+        const fecha = document.getElementById('fecha').value;
+
+        const promesas = alumnosGrupo.map(a =>
+            apiPost('/asistencias', {
+                alumnoId: a.alumnoId,
+                grupoId: parseInt(grupoId),
+                fecha: fecha,
+                presente: a.presente
+            })
+        );
+
+        await Promise.all(promesas);
+        document.getElementById('alertaAsistencia').style.display = 'block';
+    }
+
+    cargarGrupos();
+</script>
+</body>
+</html>

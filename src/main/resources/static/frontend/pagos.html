@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pagos - Gestión de Alumnos</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="navbar">
+    <h1>🎓 Gestión de Alumnos</h1>
+    <nav>
+        <a href="/frontend/dashboard.html">Dashboard</a>
+        <a href="/frontend/alumnos.html">Alumnos</a>
+        <a href="/frontend/grupos.html">Grupos</a>
+        <a href="/frontend/asistencia.html">Asistencia</a>
+        <a href="/frontend/pagos.html">Pagos</a>
+    </nav>
+    <div class="usuario-info">
+        <span id="nombreUsuario"></span>
+        <button class="btn btn-danger btn-sm" onclick="cerrarSesion()">Cerrar sesión</button>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- Buscar pagos por alumno -->
+    <div class="card">
+        <h2>Pagos por Alumno</h2>
+        <div class="flex gap-10 align-center">
+            <select id="selectAlumno" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:6px;">
+                <option value="">Seleccionar alumno...</option>
+            </select>
+            <button class="btn btn-primary" onclick="cargarPagosAlumno()">Buscar</button>
+            <button class="btn btn-success" onclick="abrirModalNuevo()">+ Registrar Pago</button>
+        </div>
+
+        <div class="table-container mt-10">
+            <table>
+                <thead>
+                <tr>
+                    <th>Alumno</th>
+                    <th>Mes</th>
+                    <th>Año</th>
+                    <th>Monto</th>
+                    <th>Método</th>
+                    <th>Fecha de pago</th>
+                    <th>Observaciones</th>
+                </tr>
+                </thead>
+                <tbody id="tablaPagos"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Buscar pagos por mes -->
+    <div class="card">
+        <h2>Pagos del Mes</h2>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Mes</label>
+                <select id="selectMes">
+                    <option value="1">Enero</option>
+                    <option value="2">Febrero</option>
+                    <option value="3">Marzo</option>
+                    <option value="4">Abril</option>
+                    <option value="5">Mayo</option>
+                    <option value="6">Junio</option>
+                    <option value="7">Julio</option>
+                    <option value="8">Agosto</option>
+                    <option value="9">Septiembre</option>
+                    <option value="10">Octubre</option>
+                    <option value="11">Noviembre</option>
+                    <option value="12">Diciembre</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Año</label>
+                <input type="number" id="inputAnio" value="2026" min="2020" max="2099">
+            </div>
+        </div>
+        <button class="btn btn-primary" onclick="cargarPagosMes()">Buscar</button>
+
+        <div class="table-container mt-10">
+            <table>
+                <thead>
+                <tr>
+                    <th>Alumno</th>
+                    <th>Mes</th>
+                    <th>Año</th>
+                    <th>Monto</th>
+                    <th>Método</th>
+                    <th>Fecha de pago</th>
+                    <th>Observaciones</th>
+                </tr>
+                </thead>
+                <tbody id="tablaPagosMes"></tbody>
+            </table>
+        </div>
+        <div id="totalMes" style="text-align:right; margin-top:10px; font-weight:600; color:#2c3e50;"></div>
+    </div>
+</div>
+
+<!-- Modal Registrar Pago -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+        <h3>Registrar Pago</h3>
+
+        <div class="form-group">
+            <label>Alumno *</label>
+            <select id="modalAlumnoId">
+                <option value="">Seleccionar alumno...</option>
+            </select>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Mes *</label>
+                <select id="modalMes">
+                    <option value="1">Enero</option>
+                    <option value="2">Febrero</option>
+                    <option value="3">Marzo</option>
+                    <option value="4">Abril</option>
+                    <option value="5">Mayo</option>
+                    <option value="6">Junio</option>
+                    <option value="7">Julio</option>
+                    <option value="8">Agosto</option>
+                    <option value="9">Septiembre</option>
+                    <option value="10">Octubre</option>
+                    <option value="11">Noviembre</option>
+                    <option value="12">Diciembre</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Año *</label>
+                <input type="number" id="modalAnio" value="2026" min="2020" max="2099">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Monto *</label>
+                <input type="number" id="modalMonto" placeholder="5000" min="0">
+            </div>
+            <div class="form-group">
+                <label>Método de pago</label>
+                <select id="modalMetodo">
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Transferencia">Transferencia</option>
+                    <option value="Débito">Débito</option>
+                    <option value="Crédito">Crédito</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Observaciones</label>
+            <input type="text" id="modalObservaciones" placeholder="Opcional">
+        </div>
+
+        <div id="alertaModal" class="alert alert-danger" style="display:none;"></div>
+
+        <div class="modal-footer">
+            <button class="btn btn-warning" onclick="cerrarModal()">Cancelar</button>
+            <button class="btn btn-primary" onclick="guardarPago()">Registrar</button>
+        </div>
+    </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+    verificarAuth();
+    document.getElementById('nombreUsuario').textContent = localStorage.getItem('nombre');
+
+    // Setear mes actual por defecto
+    const hoy = new Date();
+    document.getElementById('selectMes').value = hoy.getMonth() + 1;
+    document.getElementById('modalMes').value = hoy.getMonth() + 1;
+
+    let alumnos = [];
+
+    async function cargarAlumnos() {
+        alumnos = await apiGet('/alumnos');
+        const selects = ['selectAlumno', 'modalAlumnoId'];
+        selects.forEach(selectId => {
+            const select = document.getElementById(selectId);
+            select.innerHTML = '<option value="">Seleccionar alumno...</option>';
+            alumnos.filter(a => a.activo).forEach(a => {
+                select.innerHTML += `<option value="${a.id}">${a.apellido}, ${a.nombre}</option>`;
+            });
+        });
+    }
+
+    function renderizarPagos(lista, tbodyId) {
+        const tbody = document.getElementById(tbodyId);
+        if (lista.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center" style="color:#888;">No hay pagos registrados</td></tr>`;
+            return;
+        }
+        const meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        tbody.innerHTML = lista.map(p => `
+                <tr>
+                    <td>${p.alumnoApellido}, ${p.alumnoNombre}</td>
+                    <td>${meses[p.mes]}</td>
+                    <td>${p.anio}</td>
+                    <td>$${p.monto.toLocaleString('es-AR')}</td>
+                    <td>${p.metodoPago || '-'}</td>
+                    <td>${p.fechaPago}</td>
+                    <td>${p.observaciones || '-'}</td>
+                </tr>
+            `).join('');
+    }
+
+    async function cargarPagosAlumno() {
+        const alumnoId = document.getElementById('selectAlumno').value;
+        if (!alumnoId) return alert('Seleccioná un alumno.');
+        const pagos = await apiGet(`/pagos/alumno/${alumnoId}`);
+        renderizarPagos(pagos, 'tablaPagos');
+    }
+
+    async function cargarPagosMes() {
+        const mes = document.getElementById('selectMes').value;
+        const anio = document.getElementById('inputAnio').value;
+        const pagos = await apiGet(`/pagos/mes?mes=${mes}&anio=${anio}`);
+        renderizarPagos(pagos, 'tablaPagosMes');
+
+        const total = pagos.reduce((acc, p) => acc + p.monto, 0);
+        document.getElementById('totalMes').textContent =
+            `Total recaudado: $${total.toLocaleString('es-AR')}`;
+    }
+
+    async function abrirModalNuevo() {
+        const alumnoId = document.getElementById('selectAlumno').value;
+        document.getElementById('modalAlumnoId').value = alumnoId || '';
+        document.getElementById('modalMonto').value = '';
+        document.getElementById('modalObservaciones').value = '';
+        document.getElementById('alertaModal').style.display = 'none';
+        document.getElementById('modalOverlay').classList.add('active');
+    }
+
+    function cerrarModal() {
+        document.getElementById('modalOverlay').classList.remove('active');
+    }
+
+    async function guardarPago() {
+        const alerta = document.getElementById('alertaModal');
+
+        const body = {
+            alumnoId: parseInt(document.getElementById('modalAlumnoId').value),
+            mes: parseInt(document.getElementById('modalMes').value),
+            anio: parseInt(document.getElementById('modalAnio').value),
+            monto: parseFloat(document.getElementById('modalMonto').value),
+            metodoPago: document.getElementById('modalMetodo').value,
+            observaciones: document.getElementById('modalObservaciones').value
+        };
+
+        if (!body.alumnoId || !body.monto) {
+            alerta.textContent = 'Alumno y monto son obligatorios.';
+            alerta.style.display = 'block';
+            return;
+        }
+
+        const resultado = await apiPost('/pagos', body);
+
+        if (resultado && resultado.id) {
+            cerrarModal();
+            cargarPagosAlumno();
+            cargarPagosMes();
+        } else {
+            alerta.textContent = resultado?.mensaje || 'Error al registrar el pago.';
+            alerta.style.display = 'block';
+        }
+    }
+
+    cargarAlumnos();
+    cargarPagosMes();
+</script>
+</body>
+</html>

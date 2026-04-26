@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grupos - Gestión de Alumnos</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="navbar">
+    <h1>🎓 Gestión de Alumnos</h1>
+    <nav>
+        <a href="/frontend/dashboard.html">Dashboard</a>
+        <a href="/frontend/alumnos.html">Alumnos</a>
+        <a href="/frontend/grupos.html">Grupos</a>
+        <a href="/frontend/asistencia.html">Asistencia</a>
+        <a href="/frontend/pagos.html">Pagos</a>
+    </nav>
+    <div class="usuario-info">
+        <span id="nombreUsuario"></span>
+        <button class="btn btn-danger btn-sm" onclick="cerrarSesion()">Cerrar sesión</button>
+    </div>
+</div>
+
+<div class="container">
+    <div class="card">
+        <div class="flex justify-between align-center">
+            <h2>Grupos</h2>
+            <button class="btn btn-primary" onclick="abrirModalNuevo()">+ Nuevo Grupo</button>
+        </div>
+
+        <div class="table-container mt-10">
+            <table>
+                <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th>Capacidad</th>
+                    <th>Horario</th>
+                    <th>Días</th>
+                    <th>Profesor</th>
+                    <th>Acciones</th>
+                </tr>
+                </thead>
+                <tbody id="tablaGrupos"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Detalle del grupo -->
+    <div class="card" id="cardDetalle" style="display:none;">
+        <div class="flex justify-between align-center">
+            <h2 id="tituloDetalle"></h2>
+            <button class="btn btn-warning btn-sm" onclick="cerrarDetalle()">Cerrar</button>
+        </div>
+
+        <div class="form-row" style="margin-top:20px;">
+            <div>
+                <h3 style="color:#2c3e50; margin-bottom:10px;">
+                    Alumnos activos <span id="contadorActivos" class="badge badge-success"></span>
+                </h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Apellido</th>
+                            <th>Fecha inscripción</th>
+                            <th>Acción</th>
+                        </tr>
+                        </thead>
+                        <tbody id="tablaActivos"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div>
+                <h3 style="color:#2c3e50; margin-bottom:10px;">
+                    Lista de espera <span id="contadorEspera" class="badge badge-warning"></span>
+                </h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Apellido</th>
+                            <th>Fecha inscripción</th>
+                            <th>Acción</th>
+                        </tr>
+                        </thead>
+                        <tbody id="tablaEspera"></tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top:20px;">
+                    <h3 style="color:#2c3e50; margin-bottom:10px;">Inscribir alumno</h3>
+                    <div class="flex gap-10">
+                        <select id="selectAlumno" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:6px;"></select>
+                        <button class="btn btn-primary" onclick="inscribirAlumno()">Inscribir</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nuevo/Editar Grupo -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+        <h3 id="modalTitulo">Nuevo Grupo</h3>
+        <input type="hidden" id="grupoId">
+
+        <div class="form-group">
+            <label>Nombre *</label>
+            <input type="text" id="nombre" placeholder="Ej: Infantil A">
+        </div>
+        <div class="form-group">
+            <label>Descripción</label>
+            <input type="text" id="descripcion" placeholder="Descripción del grupo">
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Capacidad máxima *</label>
+                <input type="number" id="capacidadMaxima" placeholder="10" min="1">
+            </div>
+            <div class="form-group">
+                <label>Profesor</label>
+                <select id="profesorId">
+                    <option value="">Sin asignar</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Horario</label>
+                <input type="text" id="horario" placeholder="17:00 - 18:00">
+            </div>
+            <div class="form-group">
+                <label>Días</label>
+                <input type="text" id="diasSemana" placeholder="Lunes y Miércoles">
+            </div>
+        </div>
+
+        <div id="alertaModal" class="alert alert-danger" style="display:none;"></div>
+
+        <div class="modal-footer">
+            <button class="btn btn-warning" onclick="cerrarModal()">Cancelar</button>
+            <button class="btn btn-primary" onclick="guardarGrupo()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+    verificarAuth();
+    document.getElementById('nombreUsuario').textContent = localStorage.getItem('nombre');
+
+    let grupos = [];
+    let grupoSeleccionadoId = null;
+
+    async function cargarGrupos() {
+        grupos = await apiGet('/grupos');
+        renderizarTabla(grupos);
+    }
+
+    async function cargarUsuarios() {
+        const usuarios = await apiGet('/usuarios');
+        const select = document.getElementById('profesorId');
+        select.innerHTML = '<option value="">Sin asignar</option>';
+        usuarios.forEach(u => {
+            select.innerHTML += `<option value="${u.id}">${u.nombre} (${u.rol})</option>`;
+        });
+    }
+
+    async function cargarAlumnosSelect() {
+        const alumnos = await apiGet('/alumnos');
+        const select = document.getElementById('selectAlumno');
+        select.innerHTML = '<option value="">Seleccionar alumno...</option>';
+        alumnos.filter(a => a.activo).forEach(a => {
+            select.innerHTML += `<option value="${a.id}">${a.nombre} ${a.apellido}</option>`;
+        });
+    }
+
+    function renderizarTabla(lista) {
+        const tbody = document.getElementById('tablaGrupos');
+        if (lista.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center" style="color:#888;">No hay grupos registrados</td></tr>';
+            return;
+        }
+        tbody.innerHTML = lista.map(g => `
+                <tr>
+                    <td>${g.nombre}</td>
+                    <td>${g.descripcion || '-'}</td>
+                    <td>${g.capacidadMaxima}</td>
+                    <td>${g.horario || '-'}</td>
+                    <td>${g.diasSemana || '-'}</td>
+                    <td>${g.profesorNombre || '-'}</td>
+                    <td class="flex gap-10">
+                        <button class="btn btn-primary btn-sm" onclick="verDetalle(${g.id})">Ver</button>
+                        <button class="btn btn-warning btn-sm" onclick="abrirModalEditar(${g.id})">Editar</button>
+                        <button class="btn btn-danger btn-sm" onclick="darDeBaja(${g.id})">Dar de baja</button>
+                    </td>
+                </tr>
+            `).join('');
+    }
+
+    async function verDetalle(id) {
+        grupoSeleccionadoId = id;
+        const grupo = grupos.find(g => g.id === id);
+        document.getElementById('tituloDetalle').textContent = `Grupo: ${grupo.nombre}`;
+
+        const activos = await apiGet(`/inscripciones/grupo/${id}/activos`);
+        const espera = await apiGet(`/inscripciones/grupo/${id}/lista-espera`);
+
+        document.getElementById('contadorActivos').textContent = activos.length;
+        document.getElementById('contadorEspera').textContent = espera.length;
+
+        document.getElementById('tablaActivos').innerHTML = activos.length === 0
+            ? '<tr><td colspan="4" class="text-center" style="color:#888;">Sin alumnos activos</td></tr>'
+            : activos.map(i => `
+                    <tr>
+                        <td>${i.alumnoNombre}</td>
+                        <td>${i.alumnoApellido}</td>
+                        <td>${i.fechaInscripcion}</td>
+                        <td><button class="btn btn-danger btn-sm" onclick="darDeBajaInscripcion(${i.id})">Dar de baja</button></td>
+                    </tr>
+                `).join('');
+
+        document.getElementById('tablaEspera').innerHTML = espera.length === 0
+            ? '<tr><td colspan="4" class="text-center" style="color:#888;">Lista de espera vacía</td></tr>'
+            : espera.map(i => `
+                    <tr>
+                        <td>${i.alumnoNombre}</td>
+                        <td>${i.alumnoApellido}</td>
+                        <td>${i.fechaInscripcion}</td>
+                        <td><button class="btn btn-danger btn-sm" onclick="darDeBajaInscripcion(${i.id})">Quitar</button></td>
+                    </tr>
+                `).join('');
+
+        await cargarAlumnosSelect();
+        document.getElementById('cardDetalle').style.display = 'block';
+        document.getElementById('cardDetalle').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cerrarDetalle() {
+        document.getElementById('cardDetalle').style.display = 'none';
+        grupoSeleccionadoId = null;
+    }
+
+    async function inscribirAlumno() {
+        const alumnoId = document.getElementById('selectAlumno').value;
+        if (!alumnoId) return alert('Seleccioná un alumno.');
+        const resultado = await apiPost('/inscripciones', {
+            alumnoId: parseInt(alumnoId),
+            grupoId: grupoSeleccionadoId
+        });
+        if (resultado && resultado.id) {
+            verDetalle(grupoSeleccionadoId);
+        } else {
+            alert(resultado?.mensaje || 'Error al inscribir alumno.');
+        }
+    }
+
+    async function darDeBajaInscripcion(id) {
+        if (!confirm('¿Estás seguro?')) return;
+        await apiPatch(`/inscripciones/${id}/baja`);
+        verDetalle(grupoSeleccionadoId);
+    }
+
+    async function abrirModalNuevo() {
+        await cargarUsuarios();
+        document.getElementById('modalTitulo').textContent = 'Nuevo Grupo';
+        document.getElementById('grupoId').value = '';
+        document.getElementById('nombre').value = '';
+        document.getElementById('descripcion').value = '';
+        document.getElementById('capacidadMaxima').value = '';
+        document.getElementById('horario').value = '';
+        document.getElementById('diasSemana').value = '';
+        document.getElementById('profesorId').value = '';
+        document.getElementById('alertaModal').style.display = 'none';
+        document.getElementById('modalOverlay').classList.add('active');
+    }
+
+    async function abrirModalEditar(id) {
+        await cargarUsuarios();
+        const grupo = grupos.find(g => g.id === id);
+        document.getElementById('modalTitulo').textContent = 'Editar Grupo';
+        document.getElementById('grupoId').value = grupo.id;
+        document.getElementById('nombre').value = grupo.nombre;
+        document.getElementById('descripcion').value = grupo.descripcion || '';
+        document.getElementById('capacidadMaxima').value = grupo.capacidadMaxima;
+        document.getElementById('horario').value = grupo.horario || '';
+        document.getElementById('diasSemana').value = grupo.diasSemana || '';
+        document.getElementById('alertaModal').style.display = 'none';
+        document.getElementById('modalOverlay').classList.add('active');
+    }
+
+    function cerrarModal() {
+        document.getElementById('modalOverlay').classList.remove('active');
+    }
+
+    async function guardarGrupo() {
+        const id = document.getElementById('grupoId').value;
+        const alerta = document.getElementById('alertaModal');
+
+        const body = {
+            nombre: document.getElementById('nombre').value,
+            descripcion: document.getElementById('descripcion').value,
+            capacidadMaxima: parseInt(document.getElementById('capacidadMaxima').value),
+            horario: document.getElementById('horario').value,
+            diasSemana: document.getElementById('diasSemana').value,
+            profesorId: document.getElementById('profesorId').value || null
+        };
+
+        if (!body.nombre || !body.capacidadMaxima) {
+            alerta.textContent = 'Nombre y capacidad son obligatorios.';
+            alerta.style.display = 'block';
+            return;
+        }
+
+        const resultado = id
+            ? await apiPut(`/grupos/${id}`, body)
+            : await apiPost('/grupos', body);
+
+        if (resultado && resultado.id) {
+            cerrarModal();
+            cargarGrupos();
+        } else {
+            alerta.textContent = resultado?.mensaje || 'Error al guardar el grupo.';
+            alerta.style.display = 'block';
+        }
+    }
+
+    async function darDeBaja(id) {
+        if (!confirm('¿Estás seguro de dar de baja este grupo?')) return;
+        await apiPatch(`/grupos/${id}/baja`);
+        cargarGrupos();
+    }
+
+    cargarGrupos();
+</script>
+</body>
+</html>

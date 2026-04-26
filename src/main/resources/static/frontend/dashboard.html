@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Gestión de Alumnos</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="navbar">
+    <h1>🎓 Gestión de Alumnos</h1>
+    <nav>
+        <a href="/frontend/alumnos.html">Alumnos</a>
+        <a href="/frontend/grupos.html">Grupos</a>
+        <a href="/frontend/asistencia.html">Asistencia</a>
+        <a href="/frontend/pagos.html">Pagos</a>
+    </nav>
+    <div class="usuario-info">
+        <span id="nombreUsuario"></span>
+        <button class="btn btn-danger btn-sm" onclick="cerrarSesion()">Cerrar sesión</button>
+    </div>
+</div>
+
+<div class="container">
+    <div class="card">
+        <h2>Bienvenido/a, <span id="bienvenida"></span></h2>
+        <p style="color:#888; font-size:0.95rem;">
+            Seleccioná una sección del menú para comenzar.
+        </p>
+    </div>
+
+    <div class="form-row" style="grid-template-columns: repeat(4, 1fr);">
+        <a href="/frontend/alumnos.html" style="text-decoration:none;">
+            <div class="card text-center" style="cursor:pointer; transition: transform 0.2s;"
+                 onmouseover="this.style.transform='translateY(-4px)'"
+                 onmouseout="this.style.transform='translateY(0)'">
+                <div style="font-size:2.5rem;">👨‍🎓</div>
+                <h3 style="margin-top:10px; color:#2c3e50;">Alumnos</h3>
+                <p style="color:#888; font-size:0.85rem; margin-top:5px;">Gestionar alumnos</p>
+            </div>
+        </a>
+        <a href="/frontend/grupos.html" style="text-decoration:none;">
+            <div class="card text-center" style="cursor:pointer; transition: transform 0.2s;"
+                 onmouseover="this.style.transform='translateY(-4px)'"
+                 onmouseout="this.style.transform='translateY(0)'">
+                <div style="font-size:2.5rem;">👥</div>
+                <h3 style="margin-top:10px; color:#2c3e50;">Grupos</h3>
+                <p style="color:#888; font-size:0.85rem; margin-top:5px;">Gestionar grupos</p>
+            </div>
+        </a>
+        <a href="/frontend/asistencia.html" style="text-decoration:none;">
+            <div class="card text-center" style="cursor:pointer; transition: transform 0.2s;"
+                 onmouseover="this.style.transform='translateY(-4px)'"
+                 onmouseout="this.style.transform='translateY(0)'">
+                <div style="font-size:2.5rem;">✅</div>
+                <h3 style="margin-top:10px; color:#2c3e50;">Asistencia</h3>
+                <p style="color:#888; font-size:0.85rem; margin-top:5px;">Tomar asistencia</p>
+            </div>
+        </a>
+        <a href="/frontend/pagos.html" style="text-decoration:none;">
+            <div class="card text-center" style="cursor:pointer; transition: transform 0.2s;"
+                 onmouseover="this.style.transform='translateY(-4px)'"
+                 onmouseout="this.style.transform='translateY(0)'">
+                <div style="font-size:2.5rem;">💰</div>
+                <h3 style="margin-top:10px; color:#2c3e50;">Pagos</h3>
+                <p style="color:#888; font-size:0.85rem; margin-top:5px;">Gestionar pagos</p>
+            </div>
+        </a>
+    </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+    verificarAuth();
+
+    document.getElementById('nombreUsuario').textContent =
+        localStorage.getItem('nombre');
+    document.getElementById('bienvenida').textContent =
+        localStorage.getItem('nombre');
+</script>
+</body>
+</html>
