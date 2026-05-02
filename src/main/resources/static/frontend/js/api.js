@@ -1,4 +1,6 @@
-const API_URL = 'http://localhost:8080/api';
+const API_URL = window.location.hostname === 'localhost'
+    ? 'http://localhost:8080/api'
+    : 'https://gestion-alumnos-production.up.railway.app/api';
 
 function getToken() {
     return localStorage.getItem('token');
